@@ -1,0 +1,56 @@
+name: CI Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 9.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Download game references
+        run: |
+          mkdir -p deps
+          DEPS_URL="https://github.com/yehuoshun/STS2-ShunMod/releases/download/0.107.1"
+          curl -sL "${DEPS_URL}/sts2.dll" -o deps/sts2.dll
+          curl -sL "${DEPS_URL}/0Harmony.dll" -o deps/0Harmony.dll
+          ls -la deps/
+
+      - name: Check deps
+        run: |
+          if [ ! -f deps/sts2.dll ]; then
+            echo "=============================================="
+            echo "  sts2.dll not found!"
+            echo "=============================================="
+            exit 1
+          fi
+
+      - name: Restore
+        run: dotnet restore STS2-AiTeammate.csproj
+
+      - name: Build
+        run: |
+          dotnet build STS2-AiTeammate.csproj \
+            -c Release \
+            -p:Sts2DataDir="$(realpath deps)" \
+            --no-restore
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: STS2_AiTeammate
+          path: |
+            .godot/mono/temp/bin/Release/STS2_AiTeammate.dll
+            STS2_AiTeammate.json
+          retention-days: 7

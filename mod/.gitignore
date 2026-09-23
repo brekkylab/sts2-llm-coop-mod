@@ -1,5 +1,16 @@
-# Godot 4+ specific ignores
 .godot/
+bin/
 /android/
-/docs_private/
-.dotnet_cli_home/
+.git/
+.vs/
+publish/
+Properties/
+packages/
+*.user
+Directory.Build.props
+logs/-e 
+# Build artifacts
+artifact.zip
+tmp_artifact/
+tmp_original.png
+deps/

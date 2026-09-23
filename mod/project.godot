@@ -10,10 +10,9 @@ config_version=5
 
 [application]
 
-config/name="sts2AITeammate"
+config/name="STS2_ShunMod"
 config/features=PackedStringArray("4.5", "C#", "Mobile")
-boot_splash/bg_color=Color(0, 0, 0, 1)
-config/icon="res://icon.svg"
+config/icon="res://ShunMod.Shun/assets/mod_image.png"
 
 [display]
 
@@ -25,8 +24,9 @@ window/stretch/aspect="expand"
 
 [dotnet]
 
-project/assembly_name="sts2AITeammate"
+project/assembly_name="ShunMod_Shun"
 
 [rendering]
 
 renderer/rendering_method="mobile"
+environment/defaults/default_clear_color=Color(0.0923724, 0.122398, 0.116929, 1)

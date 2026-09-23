@@ -1,0 +1,11 @@
+{
+  "id": "STS2_AiTeammate",
+  "name": "STS2 AI Teammate",
+  "author": "yehuoshun",
+  "description": "AI-controlled teammates for Slay the Spire 2 local singleplayer runs. Forked from SallyHong2347/sts2-ai-teammate.",
+  "version": "1.0.0",
+  "has_pck": false,
+  "has_dll": true,
+  "affects_gameplay": true,
+  "dependencies": []
+}
