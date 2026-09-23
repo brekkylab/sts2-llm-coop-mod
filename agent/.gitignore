@@ -1,0 +1,4 @@
+target/
+
+# Bridge output when started by the mod
+bridge.log

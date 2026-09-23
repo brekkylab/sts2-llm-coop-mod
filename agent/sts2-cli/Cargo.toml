@@ -1,0 +1,16 @@
+[package]
+name = "sts2-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sts2-core = { path = "../sts2-core" }
+sts2-bridge = { path = "../sts2-bridge" }
+anyhow.workspace = true
+clap.workspace = true
+tokio.workspace = true
+dotenvy = "0.15"
+serde_json.workspace = true
+
+[build-dependencies]
+pkg-config = "0.3"

@@ -1,0 +1,100 @@
+{
+  "inCombat": true,
+  "snapshotId": "play_card_combat_14_target_creature_2|play_card_combat_15_target_none|end_turn_player_76561198020335009",
+  "canAct": true,
+  "turn": 1,
+  "phase": "Play",
+  "me": {
+    "netId": 76561198020335009,
+    "hp": 80,
+    "maxHp": 80,
+    "block": 5,
+    "energy": 3,
+    "powers": {},
+    "relics": [],
+    "potions": [],
+    "maxPotionCount": 0
+  },
+  "ally": {
+    "netId": 76561198020325008,
+    "hp": 80,
+    "maxHp": 80,
+    "block": 0,
+    "energy": 5,
+    "powers": {},
+    "relics": [],
+    "potions": [],
+    "maxPotionCount": 0
+  },
+  "enemies": [
+    {
+      "id": "creature_2",
+      "name": "압축벌레",
+      "hp": 80,
+      "maxHp": 88,
+      "block": 0,
+      "damageIfItHitsMe": 0,
+      "powers": {
+        "VULNERABLE_POWER": 2
+      },
+      "intents": [
+        {
+          "label": "",
+          "kind": "DebuffStrong",
+          "tip": "이 적은 당신에게 해로운 효과를 부여하려고 합니다."
+        }
+      ]
+    }
+  ],
+  "hand": [
+    {
+      "instanceId": "combat_14",
+      "id": "STRIKE_IRONCLAD",
+      "name": "타격",
+      "type": "Attack",
+      "cost": 1,
+      "estimatedDamage": 6,
+      "estimatedBlock": 0,
+      "playable": true,
+      "unplayableReason": null,
+      "keywords": []
+    },
+    {
+      "instanceId": "combat_15",
+      "id": "DEFEND_IRONCLAD",
+      "name": "수비",
+      "type": "Skill",
+      "cost": 1,
+      "estimatedDamage": 0,
+      "estimatedBlock": 5,
+      "playable": true,
+      "unplayableReason": null,
+      "keywords": []
+    }
+  ],
+  "drawCount": 6,
+  "discardCount": 3,
+  "legalActions": [
+    {
+      "actionId": "play_card_combat_14_target_creature_2",
+      "cardInstanceId": "combat_14",
+      "targetId": "creature_2",
+      "energyCost": 1,
+      "description": "타격"
+    },
+    {
+      "actionId": "play_card_combat_15_target_none",
+      "cardInstanceId": "combat_15",
+      "targetId": null,
+      "energyCost": 1,
+      "description": "수비"
+    },
+    {
+      "actionId": "end_turn_player_76561198020335009",
+      "cardInstanceId": null,
+      "targetId": null,
+      "energyCost": 0,
+      "description": "턴 종료"
+    }
+  ]
+}

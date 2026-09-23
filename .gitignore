@@ -1,0 +1,15 @@
+# Session state left by coding-agent tools
+.omc/
+.claude/
+
+# API keys live in a single .env at the workspace root
+.env
+.env.local
+
+# Per-run records. `**/run_result/*` rather than `run_result/`: excluding the
+# directory itself would stop git from looking inside, so the exception below
+# wouldn't apply; and without `**/` the pattern wouldn't match agent/run_result.
+**/run_result/*
+
+# Except the samples: they are sts2-replay's inputs for comparing prompt changes.
+!**/run_result/samples/

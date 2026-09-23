@@ -1,0 +1,30 @@
+[package]
+name = "sts2-bridge"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "sts2_bridge"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sts2-bridge"
+path = "src/main.rs"
+
+[dependencies]
+sts2-core = { path = "../sts2-core" }
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+cortex = { path = "../../../cortex/cortex", features = ["fuse-t"] }
+# Built against a locally patched ailoy (brekkylab/ailoy, not published). Upstream
+# ailoy lacks AgentBuilder::max_tokens / effort / thinking_display and Anthropic
+# prompt-cache breakpoints; see README.md and agent.rs::ask().
+ailoy = { path = "../../../ailoy" }
+dotenvy = "0.15"
+futures = "0.3"
+eframe = { version = "0.29", default-features = false, features = ["default_fonts", "glow"] }
+
+[build-dependencies]
+pkg-config = "0.3"
