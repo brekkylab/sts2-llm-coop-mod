@@ -12,7 +12,7 @@ using MegaCrit.Sts2.Core.Multiplayer.Transport;
 using MegaCrit.Sts2.Core.Platform;
 using MegaCrit.Sts2.Core.Runs;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class AiTeammateLoopbackHostGameService : INetHostGameService
 {

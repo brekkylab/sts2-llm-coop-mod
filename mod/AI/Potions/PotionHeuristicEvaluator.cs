@@ -4,7 +4,7 @@ using System.Linq;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal static class PotionHeuristicEvaluator
 {

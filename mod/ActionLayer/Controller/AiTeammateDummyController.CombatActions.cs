@@ -14,7 +14,7 @@ using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed partial class AiTeammateDummyController
 {
@@ -28,23 +28,41 @@ internal sealed partial class AiTeammateDummyController
         List<AiTeammateAvailableAction> actions = [];
         Log.Debug($"[AITeammate] DiscoverCombatActions player={player.NetId} roomCount={player.RunState.CurrentRoomCount} currentRoom={player.RunState.CurrentRoom?.GetType().Name ?? "null"} inProgress={CombatManager.Instance.IsInProgress} playPhase={CombatManager.Instance.IsInProgress}");
 
+        // Tells a bad hand from bad action discovery when a plan looks wrong.
+        var hand = PileType.Hand.GetPile(player).Cards;
+        Log.Info($"[AITeammate][DIAG] player={player.NetId} hand={hand.Count} "
+            + $"draw={PileType.Draw.GetPile(player).Cards.Count} "
+            + $"discard={PileType.Discard.GetPile(player).Cards.Count} "
+            + $"phase={player.PlayerCombatState?.Phase} "
+            + $"combatStateType={player.Creature?.CombatState?.GetType().Name ?? "null"}");
+
+        int playableCount = 0;
+        bool blockedOnlyByEnergy = true;
+
         foreach (CardModel card in PileType.Hand.GetPile(player).Cards)
         {
             UnplayableReason reason;
             MegaCrit.Sts2.Core.Models.AbstractModel? preventer;
             if (!card.CanPlay(out reason, out preventer))
             {
+                Log.Info($"[AITeammate][DIAG] card={card.Id.Entry} CanPlay=false reason={reason} preventer={preventer?.GetType().Name ?? "null"}");
+                if (reason != UnplayableReason.EnergyCostTooHigh)
+                {
+                    blockedOnlyByEnergy = false;
+                }
                 continue;
             }
+            playableCount++;
 
             bool addedAction = false;
+            // One action per possible target. Taking only the first sent every ally
+            // card to the partner and made a second enemy untargetable.
             foreach (Creature? target in GetOrderedTargets(card.TargetType, player))
             {
                 if (target == null || IsPlayableTarget(card, target, player))
                 {
                     AddPlayCardAction(actions, card, target);
                     addedAction = true;
-                    break;
                 }
             }
 
@@ -58,13 +76,14 @@ internal sealed partial class AiTeammateDummyController
         for (int potionIndex = 0; potionIndex < potions.Count; potionIndex++)
         {
             PotionModel potion = potions[potionIndex];
-            Creature? target = GetOrderedTargets(potion.TargetType, player).FirstOrDefault();
+            foreach (Creature? target in GetOrderedTargets(potion.TargetType, player))
+            {
             if (potion.TargetType.IsSingleTarget() && target == null)
             {
                 continue;
             }
 
-            string targetName = target?.ToString() ?? "none";
+            string targetName = DescribeTarget(target);
             string actionId = BuildUsePotionActionId(potion, target, potionIndex);
             actions.Add(new AiTeammateAvailableAction(
                 new AiLegalActionOption
@@ -89,7 +108,17 @@ internal sealed partial class AiTeammateDummyController
                         GameAction = usePotionAction,
                         WaitForQueueSettle = true
                     });
-                }));
+                },
+                // Target is part of the key, or per-target actions collapse into one.
+                deduplicationKey: $"potion:{potion.Id.Entry}:{potionIndex}:{GetTargetId(target)}"));
+            }
+        }
+
+        // Out of energy is normal; warn only when something else blocks the hand.
+        if (playableCount == 0 && hand.Count > 0 && !blockedOnlyByEnergy)
+        {
+            Log.Info($"[AITeammate][DIAG] WARNING player={player.NetId} has {hand.Count} card(s) "
+                + "but none is playable for a reason other than energy; only end turn is offered.");
         }
 
         actions.Add(new AiTeammateAvailableAction(
@@ -147,7 +176,7 @@ internal sealed partial class AiTeammateDummyController
     private static void AddPlayCardAction(List<AiTeammateAvailableAction> actions, CardModel card, Creature? target)
     {
         Creature? executionTarget = card.TargetType == TargetType.Self ? null : target;
-        string targetName = card.TargetType == TargetType.Self ? "self" : target?.ToString() ?? "none";
+        string targetName = card.TargetType == TargetType.Self ? "the AI teammate" : DescribeTarget(target);
         string actionId = BuildPlayCardActionId(card, executionTarget);
         actions.Add(new AiTeammateAvailableAction(
             new AiLegalActionOption
@@ -174,7 +203,8 @@ internal sealed partial class AiTeammateDummyController
                     WaitForQueueSettle = true
                 });
             },
-            deduplicationKey: $"card:{GetCardInstanceId(card)}"));
+            // Target is part of the key, or per-target actions collapse into one.
+            deduplicationKey: $"card:{GetCardInstanceId(card)}:{GetTargetId(executionTarget)}"));
     }
 
     private static string BuildPlayCardActionId(CardModel card, Creature? target)
@@ -197,6 +227,27 @@ internal sealed partial class AiTeammateDummyController
         return NetCombatCardDb.Instance.TryGetCardId(card, out uint cardId)
             ? $"combat_{cardId}"
             : SanitizeActionToken(card.Id.ToString());
+    }
+
+    /// The only thing the agent has to tell who a card lands on. Roles, not names
+    /// (neither node names nor nicknames say self vs. partner), and no "me"/"myself":
+    /// both the agent and the human read this string, and a first-person word would
+    /// flip meaning depending on the reader.
+    private static string DescribeTarget(Creature? target)
+    {
+        if (target == null)
+        {
+            return "none";
+        }
+
+        if (target.Player is { } p)
+        {
+            return Sts2CoopStateEndpoint.FindAiPlayer()?.NetId == p.NetId
+                ? "the AI teammate"
+                : "the human player";
+        }
+
+        return target.ToString() ?? "unknown";
     }
 
     private static string GetTargetId(Creature? target)

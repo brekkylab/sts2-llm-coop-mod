@@ -12,7 +12,7 @@ using MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect;
 using MegaCrit.Sts2.Core.Nodes.Screens.MainMenu;
 using MegaCrit.Sts2.Core.Saves;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 public partial class AiTeammateCharacterSetupScreen : NSubmenu, IStartRunLobbyListener
 {

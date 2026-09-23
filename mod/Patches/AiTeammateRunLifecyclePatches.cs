@@ -9,7 +9,7 @@ using MegaCrit.Sts2.Core.Multiplayer.Game.Lobby;
 using MegaCrit.Sts2.Core.Multiplayer.Messages.Game;
 using MegaCrit.Sts2.Core.Runs;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 [HarmonyPatch(typeof(RunManager), nameof(RunManager.Abandon))]
 [SuppressMessage("ReSharper", "UnusedType.Global")]

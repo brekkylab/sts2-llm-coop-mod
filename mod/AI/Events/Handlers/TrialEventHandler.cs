@@ -1,6 +1,6 @@
 using System;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class TrialEventHandler : EventSpecialHandlerBase
 {

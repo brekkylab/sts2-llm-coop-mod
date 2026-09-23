@@ -12,7 +12,7 @@ using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed partial class AiTeammateDummyController
 {
@@ -33,6 +33,66 @@ internal sealed partial class AiTeammateDummyController
     private int _lastCompletedEndTurnRound = -1;
     private int _lastCombatRoundWithInitialStagger = -1;
     private PendingIssuedActionSettlement? _pendingIssuedActionSettlement;
+
+    // A decision asked of the bridge. Not awaited: a later Tick picks it up, the same
+    // way _isExecutingAction and friends observe work that spans frames.
+    private Task<AiDecisionResult>? _pendingDecision;
+    private string? _pendingDecisionFingerprint;
+    private CancellationTokenSource? _pendingDecisionCts;
+
+    private BridgeDecisionBackend? _bridge;
+    private bool _bridgeResolved;
+    private bool _wasInCombat;
+
+    // The round in which the bridge failed to answer; the rest of it goes to the
+    // heuristic. A miss usually has a lasting cause (bridge down, model slow), so
+    // asking again would burn another 20 s each time. Retried next round.
+    private int _bridgeSilentInRound = -1;
+
+    /// The bridge's plan for this turn, played front to back once the partner ends
+    /// their turn. Kept apart from the heuristic's `_pendingEndTurn`, which expires
+    /// on a timer and is cancelled when a better action appears; mixing the two
+    /// caused an end-turn loop.
+    private readonly Queue<string> _heldPlan = new();
+    private string? _heldPlanFingerprint;
+
+    /// Play the plan without waiting for the partner to end their turn. Set by the
+    /// approve button (or the bridge's act_now flag).
+    private bool _heldPlanActNow;
+
+    /// Exposed in state so the bridge only asks for a replan when there is one.
+    public bool IsHoldingPlan => _heldPlan.Count > 0;
+
+    /// Whether the approve button should show.
+    public bool IsWaitingForApproval => _heldPlan.Count > 0 && !_heldPlanActNow;
+
+    /// The partner pressed "act now"; the next `Tick()` starts playing the plan.
+    public void ApproveHeldPlan()
+    {
+        if (_heldPlan.Count == 0)
+        {
+            return;
+        }
+
+        Log.Info($"[Sts2Coop] Player={PlayerId} approved by hand");
+        _heldPlanActNow = true;
+    }
+
+    /// Resolved lazily: a static initializer could run before the server is up.
+    private BridgeDecisionBackend? Bridge
+    {
+        get
+        {
+            if (!_bridgeResolved)
+            {
+                _bridge = AiDecisionBackendFactory.CreateBridge();
+                _bridgeResolved = true;
+                Log.Info($"[Sts2Coop] Player={PlayerId} bridge backend: {(_bridge == null ? "off" : "on")}");
+            }
+
+            return _bridge;
+        }
+    }
 
     public AiTeammateDummyController(int slotIndex, ulong playerId, CharacterModel character)
     {
@@ -73,6 +133,20 @@ internal sealed partial class AiTeammateDummyController
             ? BuildActionSetFingerprint(decisionActions)
             : string.Empty;
 
+        ResetBridgeBudgetOnNewCombat();
+
+        if (TryTakePendingDecision(decisionActions, actionSetFingerprint, isCombatDecision))
+        {
+            return;
+        }
+
+        // Before TryHandlePendingEndTurn: while a plan is held the heuristic's
+        // delayed end turn must not run at all.
+        if (TryHandleHeldPlan(decisionActions, actionSetFingerprint, isCombatDecision))
+        {
+            return;
+        }
+
         if (TryApplyInitialCombatDecisionStagger(decisionActions, promptPlayer, isCombatDecision))
         {
             return;
@@ -97,13 +171,15 @@ internal sealed partial class AiTeammateDummyController
 
         Log.Info($"[AITeammate] Player={PlayerId} legal actions: {string.Join(", ", decisionActions.Select(static action => action.ActionId))}");
 
-        AiDecisionRequest request = new()
+        // A single legal combat action is not worth a model call.
+        if (isCombatDecision && decisionActions.Count == 1)
         {
-            RequestId = BuildDecisionRequestId(),
-            SnapshotId = BuildDecisionSnapshotId(),
-            ActorId = PlayerId.ToString(),
-            LegalActions = decisionActions.Select(static action => action.Option).ToList()
-        };
+            Log.Info($"[AITeammate] Player={PlayerId} only one action; skipping the bridge");
+            CommitResolvedAction(decisionActions[0].ActionId, actionSetFingerprint, allowDelayedEndTurn: false);
+            return;
+        }
+
+        AiDecisionRequest request = BuildDecisionRequest(decisionActions);
 
         if (isCombatDecision && ShouldScheduleDelayedEndTurn(decisionActions))
         {
@@ -125,7 +201,226 @@ internal sealed partial class AiTeammateDummyController
             Log.Info($"[AITeammate] Player={PlayerId} using immediate combat decision path actionId={decisionActions[0].ActionId}");
         }
 
-        ExecuteImmediateDecision(request, actionSetFingerprint);
+        ExecuteImmediateDecision(request, actionSetFingerprint, isCombatDecision);
+    }
+
+    /// -1 outside combat.
+    private int CurrentCombatRound()
+    {
+        return TryGetControlledPlayer(out Player player, out _)
+            ? player.Creature.CombatState?.RoundNumber ?? -1
+            : -1;
+    }
+
+    /// Per-combat, not per-turn: `IsCombatDecisionWindow` flips every turn, so it
+    /// cannot mark a new combat.
+    private void ResetBridgeBudgetOnNewCombat()
+    {
+        bool inCombat = MegaCrit.Sts2.Core.Combat.CombatManager.Instance?.IsInProgress == true;
+        if (inCombat && !_wasInCombat)
+        {
+            Bridge?.ResetForNewCombat();
+
+            // Round numbers restart each combat.
+            _bridgeSilentInRound = -1;
+        }
+
+        _wasInCombat = inCombat;
+    }
+
+    /// Drop the pending decision if the action set changed, wait if it is still
+    /// running, or take it. A failed answer falls back to the heuristic here,
+    /// because this is the main thread.
+    private bool TryTakePendingDecision(
+        IReadOnlyList<AiTeammateAvailableAction> decisionActions,
+        string actionSetFingerprint,
+        bool isCombatDecision)
+    {
+        if (_pendingDecision is not { } decision)
+        {
+            return false;
+        }
+
+        if (!string.Equals(_pendingDecisionFingerprint, actionSetFingerprint, StringComparison.Ordinal))
+        {
+            Log.Info($"[Sts2Coop] Player={PlayerId} dropped a pending decision; the action set changed");
+            ClearPendingDecision("snapshot_changed");
+            return false;
+        }
+
+        if (!decision.IsCompleted)
+        {
+            _nextDecisionAtUtc = DateTime.UtcNow + IdleTickInterval;
+            return true;
+        }
+
+        AiDecisionResult? answer = decision.IsCompletedSuccessfully ? decision.Result : null;
+        string why = decision.IsCompletedSuccessfully ? "answered"
+            : decision.IsCanceled ? "budget_spent"
+            : "agent_error";
+        ClearPendingDecision(why);
+
+        if (answer != null)
+        {
+            Log.Info($"[Sts2Coop] Player={PlayerId} bridge answered actionId={answer.ChosenActionId} reason={answer.Reason ?? "none"}");
+
+            // Hold, don't play: the partner needs time to read the plan and object.
+            _heldPlan.Clear();
+            foreach (string id in answer.PlannedActionIds.Count > 0
+                ? answer.PlannedActionIds
+                : [answer.ChosenActionId])
+            {
+                _heldPlan.Enqueue(id);
+            }
+
+            _heldPlanFingerprint = actionSetFingerprint;
+            _heldPlanActNow = answer.ActNow;
+            _nextDecisionAtUtc = DateTime.UtcNow + IdleTickInterval;
+            Log.Info($"[Sts2Coop] Player={PlayerId} holding {_heldPlan.Count} action(s){(_heldPlanActNow ? " [act now]" : "")}: {string.Join(" → ", _heldPlan)}");
+            return true;
+        }
+
+        _bridgeSilentInRound = CurrentCombatRound();
+        Log.Info($"[Sts2Coop] Player={PlayerId} {why}; heuristic for the rest of round {_bridgeSilentInRound}");
+
+        if (decisionActions.Count == 0)
+        {
+            _nextDecisionAtUtc = DateTime.UtcNow + IdleTickInterval;
+            return true;
+        }
+
+        RunHeuristicNow(BuildDecisionRequest(decisionActions), actionSetFingerprint, isCombatDecision);
+        return true;
+    }
+
+    /// Drop the plan when combat ends, wait while the partner is still playing,
+    /// otherwise play the next step. Returns false on drop so `Tick()` falls
+    /// through and asks again in the same frame.
+    ///
+    /// The fingerprint is checked only while waiting. Once playing, every step
+    /// changes it; from then on only the next step's legality is checked.
+    private bool TryHandleHeldPlan(
+        IReadOnlyList<AiTeammateAvailableAction> decisionActions,
+        string actionSetFingerprint,
+        bool isCombatDecision)
+    {
+        if (_heldPlan.Count == 0)
+        {
+            return false;
+        }
+
+        if (!isCombatDecision)
+        {
+            ClearHeldPlan("left_combat");
+            return false;
+        }
+
+        bool humanEnded = _heldPlanActNow || HumanEndedTurn();
+
+        // The partner changed the board while we waited; the plan's premise is gone.
+        if (!humanEnded
+            && !string.Equals(_heldPlanFingerprint, actionSetFingerprint, StringComparison.Ordinal))
+        {
+            ClearHeldPlan("action_set_changed");
+            return false;
+        }
+
+        // An earlier step may have made this one illegal; drop the rest and re-ask.
+        string next = _heldPlan.Peek();
+        if (!decisionActions.Any(a => string.Equals(a.ActionId, next, StringComparison.Ordinal)))
+        {
+            ClearHeldPlan("action_missing");
+            return false;
+        }
+
+        if (!humanEnded)
+        {
+            _nextDecisionAtUtc = DateTime.UtcNow + IdleTickInterval;
+            return true;
+        }
+
+        // Remaining steps follow on later frames without another bridge round trip.
+        _heldPlan.Dequeue();
+        string fingerprint = _heldPlanFingerprint ?? actionSetFingerprint;
+
+        _heldPlanFingerprint = actionSetFingerprint;
+
+        if (_heldPlan.Count == 0)
+        {
+            _heldPlanFingerprint = null;
+            _heldPlanActNow = false;
+        }
+
+        Log.Info($"[Sts2Coop] Player={PlayerId} committing actionId={next} ({_heldPlan.Count} left)");
+        CommitResolvedAction(next, fingerprint, allowDelayedEndTurn: false);
+        return true;
+    }
+
+    /// Also called when the bridge reports the partner spoke. Returns whether there
+    /// was a plan, so the bridge can tell a no-op.
+    public bool DropHeldPlan()
+    {
+        if (_heldPlan.Count == 0)
+        {
+            return false;
+        }
+
+        ClearHeldPlan("human_said");
+        return true;
+    }
+
+    private void ClearHeldPlan(string why)
+    {
+        if (_heldPlan.Count == 0)
+        {
+            return;
+        }
+
+        Log.Info($"[Sts2Coop] Player={PlayerId} dropped the held plan ({why}, {_heldPlan.Count} left)");
+        _heldPlan.Clear();
+        _heldPlanFingerprint = null;
+        _heldPlanActNow = false;
+    }
+
+    /// True when the partner cannot be found. False would hold the plan until the
+    /// end of combat, since nothing else would release it.
+    private static bool HumanEndedTurn()
+    {
+        var combat = MegaCrit.Sts2.Core.Combat.CombatManager.Instance;
+        if (combat == null || !combat.IsInProgress)
+        {
+            return true;
+        }
+
+        Player? human = Sts2CoopStateEndpoint.FindHumanPlayerOrNull();
+        return human == null || combat.IsPlayerReadyToEndTurn(human);
+    }
+
+    private void ClearPendingDecision(string why)
+    {
+        if (_pendingDecision is { IsFaulted: true } faulted)
+        {
+            Log.Warn($"[Sts2Coop] Player={PlayerId} pending decision faulted ({why}): {faulted.Exception?.GetBaseException().Message}");
+        }
+
+        try { _pendingDecisionCts?.Cancel(); }
+        catch (ObjectDisposedException) { /* already disposed */ }
+
+        _pendingDecisionCts?.Dispose();
+        _pendingDecisionCts = null;
+        _pendingDecision = null;
+        _pendingDecisionFingerprint = null;
+    }
+
+    private AiDecisionRequest BuildDecisionRequest(IReadOnlyList<AiTeammateAvailableAction> decisionActions)
+    {
+        return new AiDecisionRequest
+        {
+            RequestId = BuildDecisionRequestId(),
+            SnapshotId = BuildDecisionSnapshotId(),
+            ActorId = PlayerId.ToString(),
+            LegalActions = decisionActions.Select(static action => action.Option).ToList()
+        };
     }
 
     public IReadOnlyList<AiTeammateAvailableAction> DiscoverAvailableActions()
@@ -184,7 +479,11 @@ internal sealed partial class AiTeammateDummyController
 
     private static bool IsCombatDecisionWindow(Player player)
     {
+        // CombatManager.IsPlayPhase is gone in v0.107.1. The per-player phase is more
+        // accurate in co-op anyway; without it the AI plans before its hand is dealt
+        // and can only end the turn.
         return MegaCrit.Sts2.Core.Combat.CombatManager.Instance.IsInProgress &&
+               player.PlayerCombatState?.Phase == MegaCrit.Sts2.Core.Combat.PlayerTurnPhase.Play &&
                player.Creature.CombatState?.CurrentSide == player.Creature.Side &&
                !MegaCrit.Sts2.Core.Combat.CombatManager.Instance.IsPlayerReadyToEndTurn(player);
     }
@@ -304,12 +603,74 @@ internal sealed partial class AiTeammateDummyController
         return true;
     }
 
-    private void ExecuteImmediateDecision(AiDecisionRequest request, string actionSetFingerprint)
+    /// Combat decisions go to the bridge and return immediately; a later frame's
+    /// `TryTakePendingDecision` picks up the answer. Out-of-combat decisions skip
+    /// the bridge, which only reads combat state.
+    private void ExecuteImmediateDecision(
+        AiDecisionRequest request, string actionSetFingerprint, bool isCombatDecision)
+    {
+        Log.Debug($"[Sts2Coop][DIAG] Player={PlayerId} decide on thread={Environment.CurrentManagedThreadId} isMain={Sts2CoopMainThread.IsMainThread()}");
+
+        int round = CurrentCombatRound();
+        if (isCombatDecision && Bridge is { } bridge && _bridgeSilentInRound != round)
+        {
+            var cts = new CancellationTokenSource();
+            try
+            {
+                Task<AiDecisionResult>? asked = bridge.TryAsk(request, cts.Token);
+                if (asked != null)
+                {
+                    _pendingDecision = asked;
+                    _pendingDecisionFingerprint = actionSetFingerprint;
+                    _pendingDecisionCts = cts;
+                    _nextDecisionAtUtc = DateTime.UtcNow + IdleTickInterval;
+                    Log.Info($"[Sts2Coop] Player={PlayerId} asked the bridge; budget={BridgeDecisionBackend.Budget.TotalSeconds:0}s");
+                    return;
+                }
+            }
+            catch (Exception exception)
+            {
+                Log.Warn($"[Sts2Coop] Player={PlayerId} could not ask the bridge: {exception.Message}");
+            }
+
+            cts.Dispose();
+        }
+
+        RunHeuristicNow(request, actionSetFingerprint, isCombatDecision);
+    }
+
+    /// The heuristic completes synchronously (`Task.FromResult`), so the result is
+    /// taken here and game state is read only on the main thread.
+    private void RunHeuristicNow(
+        AiDecisionRequest request, string actionSetFingerprint, bool isCombatDecision)
     {
         try
         {
-            AiDecisionResult result = DecisionBackend.DecideAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+            Task<AiDecisionResult> task = DecisionBackend.DecideAsync(request, CancellationToken.None);
+            if (!task.IsCompletedSuccessfully)
+            {
+                Log.Warn($"[AITeammate] Player={PlayerId} heuristic backend did not complete synchronously; skipping tick");
+                _nextDecisionAtUtc = DateTime.UtcNow + IdleTickInterval;
+                return;
+            }
+
+            AiDecisionResult result = task.Result;
             Log.Info($"[AITeammate] Player={PlayerId} chose actionId={result.ChosenActionId} reason={result.Reason ?? "none"}");
+
+            // Hold the heuristic's choice too, so a bridge failure doesn't turn into
+            // the AI silently playing its turn. No bubble (nothing was said), just the
+            // approve button. Never outside combat: TryHandleHeldPlan would drop it.
+            if (isCombatDecision)
+            {
+                _heldPlan.Clear();
+                _heldPlan.Enqueue(result.ChosenActionId);
+                _heldPlanFingerprint = actionSetFingerprint;
+                _heldPlanActNow = false;
+                _nextDecisionAtUtc = DateTime.UtcNow + IdleTickInterval;
+                Log.Info($"[Sts2Coop] Player={PlayerId} holding the heuristic pick, waiting");
+                return;
+            }
+
             CommitResolvedAction(result.ChosenActionId, actionSetFingerprint);
         }
         catch (Exception exception)

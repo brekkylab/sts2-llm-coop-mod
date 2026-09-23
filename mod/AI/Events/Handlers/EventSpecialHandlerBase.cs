@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal abstract class EventSpecialHandlerBase : IEventSpecialHandler
 {

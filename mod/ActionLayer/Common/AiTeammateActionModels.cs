@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using MegaCrit.Sts2.Core.GameActions;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal enum AiTeammateActionKind
 {

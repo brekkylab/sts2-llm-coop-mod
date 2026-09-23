@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class AiTeammateNoOpPlayerChoiceContext : PlayerChoiceContext
 {

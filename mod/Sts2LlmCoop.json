@@ -1,0 +1,11 @@
+{
+  "id": "Sts2LlmCoop",
+  "name": "STS2 LLM Coop",
+  "author": "jeffrey",
+  "description": "Play Slay the Spire 2 co-op with an LLM teammate that talks to you. It states its plan each turn, you answer or stay silent, and it acts. Built on SallyHong2347/sts2-ai-teammate (MIT).",
+  "version": "0.1.0",
+  "has_pck": false,
+  "has_dll": true,
+  "affects_gameplay": true,
+  "dependencies": [{ "id": "BaseLib", "min_version": "3.4.7" }]
+}

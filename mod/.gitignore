@@ -14,3 +14,10 @@ artifact.zip
 tmp_artifact/
 tmp_original.png
 deps/
+
+# build output
+obj/
+bin/
+.DS_Store
+.omc/
+.claude/

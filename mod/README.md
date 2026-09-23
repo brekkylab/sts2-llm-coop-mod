@@ -1,27 +1,10 @@
-# STS2 AI Teammate
+# mod
 
-> AI 控制的队友，陪你单刷杀戮尖塔 2。
-> Forked from [SallyHong2347/sts2-ai-teammate](https://github.com/SallyHong2347/sts2-ai-teammate)，适配当前游戏版本。
+The C# half of sts2-llm-coop-mod; see the [top-level README](../README.md).
 
-## 功能
+Based on [SallyHong2347/sts2-ai-teammate](https://github.com/SallyHong2347/sts2-ai-teammate)
+(MIT), ported to game v0.107.1 by [yehuoshun/STS2-AiTeammate](https://github.com/yehuoshun/STS2-AiTeammate).
+The documents in `docs/` are from the original mod and describe its heuristic teammate.
 
-- 在本地 fake-multiplayer 跑 AI 队友
-- AI 自动战斗、选牌、选遗物、用药水、逛商店、处理事件
-- 每角色独立行为配置
-- 纯 C#，无 Godot 场景依赖
-
-## 安装
-
-下载 Release 中的 `STS2_AiTeammate.zip`，解压到 `Mods/` 目录。
-
-## 构建
-
-```bash
-dotnet build STS2-AiTeammate.csproj -c Release
-```
-
-需要 .NET 9.0 SDK 和已安装的 Slay the Spire 2。
-
-## 许可
-
-MIT
+Build with `dotnet build -c Release` (Debug does not compile). Requires the .NET 9 SDK,
+Slay the Spire 2 and BaseLib from the Steam Workshop.

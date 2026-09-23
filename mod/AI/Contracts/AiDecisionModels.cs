@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class AiDecisionRequest
 {
@@ -25,6 +25,15 @@ internal sealed class AiDecisionResult
 
     [JsonPropertyName("ranked_action_ids")]
     public List<string> RankedActionIds { get; init; } = [];
+
+    /// A sequence ("this, then that"), unlike `RankedActionIds` ("this, else that").
+    /// Empty means just `ChosenActionId`.
+    [JsonPropertyName("planned_action_ids")]
+    public List<string> PlannedActionIds { get; init; } = [];
+
+    /// Play without waiting for the partner.
+    [JsonPropertyName("act_now")]
+    public bool ActNow { get; init; }
 
     [JsonPropertyName("reason")]
     public string? Reason { get; init; }

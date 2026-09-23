@@ -5,7 +5,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Platform;
 using MegaCrit.Sts2.Core.Runs;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal readonly record struct AiTeammateSessionParticipant(
     int SlotIndex,

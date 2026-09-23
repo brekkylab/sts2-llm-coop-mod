@@ -1,7 +1,7 @@
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Entities.Merchant;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class ShopOffer
 {

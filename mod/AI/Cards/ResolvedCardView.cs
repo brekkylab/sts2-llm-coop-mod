@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using MegaCrit.Sts2.Core.Entities.Cards;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class ResolvedCardView
 {

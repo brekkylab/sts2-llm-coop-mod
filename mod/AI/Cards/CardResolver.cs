@@ -8,7 +8,7 @@ using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class CardResolver : ICardResolver
 {

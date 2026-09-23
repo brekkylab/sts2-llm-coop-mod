@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class EventPlanner
 {

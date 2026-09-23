@@ -7,7 +7,7 @@ using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Screens.MainMenu;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 [HarmonyPatch(typeof(NSubmenuStack), nameof(NSubmenuStack.Push))]
 [SuppressMessage("ReSharper", "UnusedType.Global")]

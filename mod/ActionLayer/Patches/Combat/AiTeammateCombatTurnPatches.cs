@@ -6,7 +6,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Runs;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 [SuppressMessage("ReSharper", "UnusedType.Global")]
 internal static class AiTeammateCombatTurnPatches

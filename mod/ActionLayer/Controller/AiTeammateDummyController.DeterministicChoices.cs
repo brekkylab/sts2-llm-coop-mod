@@ -17,7 +17,7 @@ using MegaCrit.Sts2.Core.Runs.History;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.TestSupport;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed partial class AiTeammateDummyController
 {

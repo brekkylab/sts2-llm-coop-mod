@@ -18,7 +18,7 @@ using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.Unlocks;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 [HarmonyPatch(typeof(PlatformUtil), nameof(PlatformUtil.GetPlayerName))]
 [SuppressMessage("ReSharper", "UnusedType.Global")]

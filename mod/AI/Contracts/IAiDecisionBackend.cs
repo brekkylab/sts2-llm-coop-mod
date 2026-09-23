@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal interface IAiDecisionBackend
 {

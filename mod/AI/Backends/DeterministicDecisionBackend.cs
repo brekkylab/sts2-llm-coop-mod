@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class DeterministicDecisionBackend : IAiDecisionBackend
 {

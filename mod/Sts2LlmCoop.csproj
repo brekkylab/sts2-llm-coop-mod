@@ -2,8 +2,8 @@
     <Import Project="Sts2PathDiscovery.props"/>
     <PropertyGroup>
         <TargetFramework>net9.0</TargetFramework>
-        <RootNamespace>STS2AiTeammate</RootNamespace>
-        <AssemblyName>STS2_AiTeammate</AssemblyName>
+        <RootNamespace>Sts2LlmCoop</RootNamespace>
+        <AssemblyName>Sts2LlmCoop</AssemblyName>
         <ImplicitUsings>true</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -17,6 +17,19 @@
         <NoWarn>$(NoWarn);MSB3270</NoWarn>
     </PropertyGroup>
 
+    <!--
+      Bake the bridge location in at build time. The mod is copied into the game
+      folder and can't find the checkout afterwards; the build tree knows it:
+      agent/ sits next to mod/.
+    -->
+    <PropertyGroup>
+        <Sts2CoopAgentDir Condition="'$(Sts2CoopAgentDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../agent'))</Sts2CoopAgentDir>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AssemblyMetadata Include="AgentDir" Value="$(Sts2CoopAgentDir)" />
+    </ItemGroup>
+
     <ItemGroup Condition="Exists('$(Sts2DataDir)/sts2.dll')">
         <Reference Include="0Harmony">
             <HintPath>$(Sts2DataDir)/0Harmony.dll</HintPath>
@@ -24,6 +37,13 @@
         </Reference>
         <Reference Include="sts2">
             <HintPath>$(Sts2DataDir)/sts2.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup Condition="Exists('$(BaseLibPath)/BaseLib.dll')">
+        <Reference Include="BaseLib">
+            <HintPath>$(BaseLibPath)/BaseLib.dll</HintPath>
             <Private>false</Private>
         </Reference>
     </ItemGroup>
@@ -38,7 +58,7 @@
 
     <ItemGroup>
         <None Include=".gitignore"/>
-        <None Include="STS2_AiTeammate.json"/>
+        <None Include="Sts2LlmCoop.json"/>
     </ItemGroup>
 
     <Target Name="CheckDependencyPaths" BeforeTargets="CoreCompile">
@@ -48,6 +68,6 @@
     <Target Name="CopyToModsFolderOnBuild" AfterTargets="PostBuildEvent">
         <Message Text="Copying .dll and manifest to mods folder." Importance="high"/>
         <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModsPath)$(AssemblyName)/"/>
-        <Copy SourceFiles="STS2_AiTeammate.json" DestinationFolder="$(ModsPath)$(AssemblyName)/"/>
+        <Copy SourceFiles="Sts2LlmCoop.json" DestinationFolder="$(ModsPath)$(AssemblyName)/"/>
     </Target>
 </Project>

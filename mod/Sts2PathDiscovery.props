@@ -36,7 +36,7 @@
         <Sts2DataDir>$(Sts2Path)/data_sts2_linuxbsd_x86_64</Sts2DataDir>
     </PropertyGroup>
 
-    <!-- Debug 构建跳过 Publicizer（3x 加速），Release 构建正常跑 -->
+    <!-- Debug skips the Publicizer (3x faster) and does not compile; build Release. -->
     <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
         <PublicizeSts>false</PublicizeSts>
     </PropertyGroup>
@@ -48,5 +48,14 @@
         
         <ModsPath>$(Sts2Path)/SlayTheSpire2.app/Contents/MacOS/mods/</ModsPath>
         <Sts2DataDir>$(Sts2Path)/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_x86_64</Sts2DataDir>
+    </PropertyGroup>
+
+    <!--
+      BaseLib comes from the Steam Workshop. Both numbers are fixed: 2868840 is the
+      game's app id, 3737335127 BaseLib's workshop item id. Override in local.props
+      for a manual install.
+    -->
+    <PropertyGroup>
+        <BaseLibPath Condition="'$(BaseLibPath)' == ''">$(SteamLibraryPath)/workshop/content/2868840/3737335127/BaseLib</BaseLibPath>
     </PropertyGroup>
 </Project>

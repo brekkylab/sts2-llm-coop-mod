@@ -1,6 +1,6 @@
 using System;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal readonly record struct EffectAdjustmentKey(EffectKind Kind, string? AppliedPowerId = null);
 

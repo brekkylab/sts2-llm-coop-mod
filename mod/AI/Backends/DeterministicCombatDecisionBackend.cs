@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MegaCrit.Sts2.Core.Logging;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class DeterministicCombatDecisionBackend : IAiDecisionBackend
 {

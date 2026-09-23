@@ -1,6 +1,6 @@
 using MegaCrit.Sts2.Core.Map;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class AiTeammateTestActMap : ActMap
 {

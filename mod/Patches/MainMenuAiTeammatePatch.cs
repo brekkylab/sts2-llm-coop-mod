@@ -10,7 +10,7 @@ using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
 using MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect;
 using MegaCrit.Sts2.Core.Nodes.Screens.MainMenu;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 [HarmonyPatch(typeof(NMainMenu), nameof(NMainMenu._Ready))]
 [SuppressMessage("ReSharper", "UnusedType.Global")]

@@ -1,6 +1,6 @@
 using MegaCrit.Sts2.Core.Models;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal interface ICardResolver
 {

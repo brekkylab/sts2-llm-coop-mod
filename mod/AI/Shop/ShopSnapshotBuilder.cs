@@ -10,7 +10,7 @@ using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Rooms;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class ShopSnapshotBuilder
 {

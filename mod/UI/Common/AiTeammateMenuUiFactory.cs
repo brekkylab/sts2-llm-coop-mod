@@ -2,7 +2,7 @@ using Godot;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes.Screens.MainMenu;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal static class AiTeammateMenuUiFactory
 {

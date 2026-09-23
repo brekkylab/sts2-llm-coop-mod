@@ -22,7 +22,7 @@ using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.Saves.Runs;
 
-namespace STS2AiTeammate;
+namespace Sts2LlmCoop;
 
 internal sealed class AiTeammateSaveTagData
 {
@@ -210,7 +210,11 @@ internal static class AiTeammateSaveSupport
             }
 
             RunState runState = RunState.FromSerializable(savedRun.SaveData);
-            RunManager.Instance.SetUpSavedMultiplayer(runState, lobby);
+
+            // Returns a Task since v0.107.1. Not awaiting it races LoadRun into an NRE
+            // in PreloadManager.LoadRunAssets, visible only after a restart (assets
+            // are cached within a session).
+            await RunManager.Instance.SetUpSavedMultiplayer(runState, lobby);
             await game.LoadRun(runState, savedRun.SaveData.PreFinishedRoom);
             lobby.CleanUp(disconnectSession: false);
             await game.Transition.FadeIn();
@@ -278,6 +282,11 @@ internal static class AiTeammateSaveSupport
 
         Log.Info("[AITeammate] Clearing in-memory AI teammate session state.");
         AiTeammateSessionRegistry.SetCurrent(null);
+
+        // The only chance to clear these: their Tick runs from NRun._Process, which
+        // doesn't exist on the main menu.
+        AiTeammateBubbles.Clear();
+        AiTeammateApproveButton.Clear();
     }
 
     private static bool TryReadCurrentProfile(out AiTeammateSaveTagData? tagData)
