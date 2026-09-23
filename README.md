@@ -14,16 +14,20 @@ An example for [ailoy](https://github.com/brekkylab/ailoy) and
 ┌──────────────┐    HTTP     ┌──────────────────┐    API     ┌─────────┐
 │  game + mod  │ ◀────────── │ agent (bridge)   │ ─────────▶ │  model  │
 │  plays cards │  asks every │ decides what to  │            │ (Claude)│
-└──────────────┘    0.2 s    │ do, shows window │            └─────────┘
-                             └──────────────────┘
+│              │    0.2 s    │ do, shows window │            │         │
+│    SERVER    │             │      CLIENT      │            │  SERVER │
+└──────────────┘             └──────────────────┘            └─────────┘
 ```
 
-The mod only answers; the bridge always asks first. One decision goes like this:
+The mod is an HTTP server on `127.0.0.1:15527`; the bridge is its only client, and
+also the client of the model's API. So the mod never calls out: it only answers, and
+the bridge always asks first, even to post its status for the speech bubbles. One
+decision goes like this:
 
-1. The game needs a combat move and waits up to 20 s.
+1. The game needs a combat move and waits up to 20 s. The bridge sees this on its next poll.
 2. The bridge sends the model the board and a numbered list of legal actions.
 3. The model answers with a plan, e.g. `CHOSEN: 1, 3`.
-4. The mod holds the plan and shows it in a speech bubble.
+4. The bridge posts the plan to the mod, which holds it and shows it in a speech bubble.
 5. When you end your turn (or press **Act now**), the mod plays 1, then 3.
 
 No usable answer in 20 s? The original mod's heuristic plays instead. Outside combat
